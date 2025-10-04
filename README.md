@@ -48,7 +48,18 @@ A Python-based system that automatically responds to common email queries in you
    - Copy `.env.example` to `.env`
    - Update the values in `.env` with your Gmail API credentials
 
-5. **Test the configuration**:
+5. **Set target email and Gemini API (enables AI summaries)**:
+   - Add to your `.env` file:
+     ```
+     TARGET_EMAIL=your.address@yourdomain.com
+     GEMINI_API_KEY=your_api_key_here
+     GEMINI_MODEL=gemini-2.0-flash
+     SIGNATURE_NAME=Mohak Bansal
+     SIGNATURE_TITLE=Software Engineer
+     SIGNATURE_COMPANY=miniOrange
+     ```
+
+6. **Test the configuration**:
    ```bash
    python main.py --config-check
    ```

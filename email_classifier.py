@@ -178,12 +178,17 @@ Best regards,
         
         return ' '.join(tokens)
     
-    def classify_email(self, email_subject, email_body, sender_email=None):
-        """Classify email based on subject, body content, and sender"""
+    def classify_email(self, email_subject, email_body, sender_email=None, thread_context=None):
+        """Classify email based on subject, body content, sender, and thread context"""
         # Check sender first for special cases
         if sender_email and 'mohak64bansal@gmail.com' in sender_email.lower():
-            # Check if the email contains "query for pam"
+            # Check if the email contains "query for pam" (including thread context)Access SSH / RDP to PAa  demo
             combined_text = f"{email_subject} {email_body}".lower()
+            if thread_context:
+                thread_text = " ".join([f"{email.get('subject', '')} {email.get('body', '')}" 
+                                      for email in thread_context]).lower()
+                combined_text = f"{combined_text} {thread_text}"
+            
             if 'query for pam' in combined_text:
                 return 'mohak64bansal'
             else:
@@ -191,6 +196,12 @@ Best regards,
         
         # Combine subject and body
         full_text = f"{email_subject} {email_body}"
+        
+        # Include thread context if available
+        if thread_context:
+            thread_text = " ".join([f"{email.get('subject', '')} {email.get('body', '')}" 
+                                  for email in thread_context])
+            full_text = f"{full_text} {thread_text}"
         
         # Preprocess text
         processed_text = self.preprocess_text(full_text)
@@ -228,5 +239,90 @@ Best regards,
         # Add specific details if provided
         if specific_details:
             response += f"\n\nAdditional Information:\n{specific_details}"
+        
+        return response
+    
+    def analyze_thread_context(self, thread_emails):
+        """Analyze thread context to understand conversation flow"""
+        if not thread_emails or len(thread_emails) < 2:
+            return None
+        
+        # Extract key information from thread
+        thread_info = {
+            'total_emails': len(thread_emails),
+            'participants': set(),
+            'topics': [],
+            'last_sender': thread_emails[-1].get('sender', ''),
+            'conversation_summary': ''
+        }
+        
+        # Collect participants
+        for email in thread_emails:
+            sender = email.get('sender', '')
+            if sender:
+                thread_info['participants'].add(sender)
+        
+        # Extract topics from all emails
+        all_text = " ".join([f"{email.get('subject', '')} {email.get('body', '')}" 
+                           for email in thread_emails])
+        
+        # Simple topic extraction (can be enhanced)
+        words = self.preprocess_text(all_text).split()
+        word_freq = {}
+        for word in words:
+            if len(word) > 3:  # Skip short words
+                word_freq[word] = word_freq.get(word, 0) + 1
+        
+        # Get most frequent words as topics
+        thread_info['topics'] = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        # Create conversation summary
+        thread_info['conversation_summary'] = self.create_thread_summary(thread_emails)
+        
+        return thread_info
+    
+    def create_thread_summary(self, thread_emails):
+        """Create a summary of the thread conversation"""
+        if len(thread_emails) <= 2:
+            return "Initial conversation"
+        
+        # Extract key points from the conversation
+        summary_parts = []
+        
+        # Check for common conversation patterns
+        all_text = " ".join([f"{email.get('subject', '')} {email.get('body', '')}" 
+                           for email in thread_emails]).lower()
+        
+        if 'question' in all_text or '?' in all_text:
+            summary_parts.append("Contains questions")
+        
+        if 'price' in all_text or 'cost' in all_text or 'pricing' in all_text:
+            summary_parts.append("Price discussion")
+        
+        if 'demo' in all_text or 'meeting' in all_text or 'schedule' in all_text:
+            summary_parts.append("Demo/meeting discussion")
+        
+        if 'problem' in all_text or 'issue' in all_text or 'error' in all_text:
+            summary_parts.append("Problem resolution")
+        
+        if 'thank' in all_text or 'appreciate' in all_text:
+            summary_parts.append("Gratitude expressed")
+        
+        return "; ".join(summary_parts) if summary_parts else "General discussion"
+    
+    def generate_contextual_response(self, template, thread_info, current_email):
+        """Generate a response that takes into account the thread context"""
+        response = template
+        
+        if thread_info:
+            # Add thread context to the response
+            if thread_info['total_emails'] > 2:
+                response += f"\n\n--- Thread Context ---\n"
+                response += f"Conversation Summary: {thread_info['conversation_summary']}\n"
+                response += f"Total emails in thread: {thread_info['total_emails']}\n"
+                
+                if thread_info['topics']:
+                    top_topics = [topic[0] for topic in thread_info['topics'][:3]]
+                    response += f"Key topics discussed: {', '.join(top_topics)}\n"
         
         return response
